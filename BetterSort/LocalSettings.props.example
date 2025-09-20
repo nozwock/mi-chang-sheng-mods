@@ -1,6 +1,0 @@
-<Project>
-  <PropertyGroup>
-    <!-- Replace this with the path to your installed game -->
-    <game_Location>~/.steam/steam/steamapps/common/MyGame</game_Location>
-  </PropertyGroup>
-</Project>
