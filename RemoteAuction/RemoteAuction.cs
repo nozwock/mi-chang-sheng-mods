@@ -84,16 +84,7 @@ public class Plugin : BaseUnityPlugin
         obj.GetComponent<FpBtn>().enabled = false;
         obj.AddComponent<Button>().onClick.AddListener(delegate
         {
-            if (player.level < 6 || player.money < 50000)
-            {
-                UIPopTip.Inst.Pop("要求筑基后期和50000灵石！");
-            }
-            else
-            {
-                KBEngine.Avatar obj2 = player;
-                obj2.money -= 50000;
-                GameObejetUtils.Inst(ResManager.inst.LoadPrefab("PaiMai/NewPaiMaiUI")).GetComponent<NewPaiMaiJoin>().Init(emailData.PaiMaiInfo.PaiMaiId, emailData.npcId);
-            }
+            GameObejetUtils.Inst(ResManager.inst.LoadPrefab("PaiMai/NewPaiMaiUI")).GetComponent<NewPaiMaiJoin>().Init(emailData.PaiMaiInfo.PaiMaiId, emailData.npcId);
         });
     }
 }
