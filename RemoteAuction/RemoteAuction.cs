@@ -10,17 +10,18 @@ using UnityEngine.UI;
 
 namespace Remote_Auction;
 
-[BepInPlugin("Arkania.Remote.Auction", "Arkania Remote Auction", "1.0.0")]
-public class Main : BaseUnityPlugin
+[BepInPlugin(PLUGIN_GUID, PLUGIN_NAME, PLUGIN_VERSION)]
+public class Plugin : BaseUnityPlugin
 {
-    static Main Inst;
+    public const string PLUGIN_GUID = "Arkania.Remote.Auction";
+    public const string PLUGIN_NAME = "Arkania Remote Auction";
+    public const string PLUGIN_VERSION = "1.0.0";
 
-    UnityEngine.GameObject go;
+    static UnityEngine.GameObject btnGo;
 
     void Start()
     {
-        Harmony.CreateAndPatchAll(typeof(Main));
-        Inst = this;
+        Harmony.CreateAndPatchAll(typeof(Plugin), PLUGIN_GUID);
         StartCoroutine(FindGameObject("OkBtn"));
     }
 
@@ -33,8 +34,8 @@ public class Main : BaseUnityPlugin
             yield return new WaitForFixedUpdate();
         }
         while (obj == null);
-        go = GetChild<RectTransform>(obj, name, showError: true);
-        if (go != null)
+        btnGo = GetChild<RectTransform>(obj, name, showError: true);
+        if (btnGo != null)
         {
             Logger.Log(LogLevel.Message, "Load " + name + " has been done");
         }
@@ -70,7 +71,7 @@ public class Main : BaseUnityPlugin
         {
             return;
         }
-        UnityEngine.GameObject obj = Object.Instantiate<UnityEngine.GameObject>(Inst.go, __instance.transform);
+        UnityEngine.GameObject obj = Object.Instantiate<UnityEngine.GameObject>(btnGo, __instance.transform);
         obj.transform.localPosition = new Vector3(0f, -345f);
         obj.transform.localScale = Vector3.one;
         obj.GetComponent<FpBtn>().enabled = false;
