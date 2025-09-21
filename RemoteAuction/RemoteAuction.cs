@@ -17,12 +17,19 @@ public class Plugin : BaseUnityPlugin
     public const string PLUGIN_NAME = "Arkania Remote Auction";
     public const string PLUGIN_VERSION = "1.0.0";
 
+    static Harmony harmony;
     static UnityEngine.GameObject btnGo;
 
     void Start()
     {
-        Harmony.CreateAndPatchAll(typeof(Plugin), PLUGIN_GUID);
+        harmony = Harmony.CreateAndPatchAll(typeof(Plugin), PLUGIN_GUID);
         StartCoroutine(FindGameObject("OkBtn"));
+    }
+
+    void OnDestroy()
+    {
+        harmony?.UnpatchSelf();
+        harmony = null;
     }
 
     IEnumerator FindGameObject(string name)
