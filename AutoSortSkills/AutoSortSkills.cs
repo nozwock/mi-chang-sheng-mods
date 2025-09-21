@@ -59,19 +59,19 @@ public class Plugin : BaseUnityPlugin
     {
         Logger = base.Logger;
 
-        var activeDefault = "0,1,2,3,4,5,6,7,8";  // Metal -> Array
-        var passiveDefault = "0,1,2,3,4,5,6,7,8,9"; // Metal -> Body
+        var activeDefault = string.Join(",", Enum.GetNames(typeof(ActiveSkillType)));
+        var passiveDefault = string.Join(",", Enum.GetNames(typeof(PassiveSkillType)));
 
         var activeOrderConfig = Config.Bind("Sorting", "ActiveSkillTypeOrder", activeDefault,
-            "Comma-separated Active skill type IDs in desired sort order (e.g. Metal=0, Wood=1, Water=2, Fire=3, Earth=4, Qi=5, Sense=6, Sword=7, Array=8, and SecretArt>=9 is always last).");
-
+            "Comma-separated Active skill types in desired sort order. Secret Arts always comes last.");
         var passiveOrderConfig = Config.Bind("Sorting", "PassiveSkillTypeOrder", passiveDefault,
-            "Comma-separated Passive skill type IDs in desired sort order (e.g. Metal=0, Wood=1, Water=2, Fire=3, Earth=4, Qi=5, Agility=6, ??=7, Sword=8, Body=9).");
+            "Comma-separated Passive skill types in desired sort order.");
 
-        ActiveSkillTypeOrder = ParseSkillTypeOrder(activeOrderConfig.Value);
-        PassiveSkillTypeOrder = ParseSkillTypeOrder(passiveOrderConfig.Value);
+        ActiveSkillTypeOrder = ParseSkillTypeOrder<ActiveSkillType>(activeOrderConfig.Value);
+        PassiveSkillTypeOrder = ParseSkillTypeOrder<PassiveSkillType>(passiveOrderConfig.Value);
 
         harmony = Harmony.CreateAndPatchAll(typeof(Plugin), PLUGIN_GUID);
+
         Logger.LogInfo("Plugin loaded with Active skill order: " + activeOrderConfig.Value);
         Logger.LogInfo("Plugin loaded with Passive skill order: " + passiveOrderConfig.Value);
     }
@@ -105,6 +105,9 @@ public class Plugin : BaseUnityPlugin
         SortActiveSkillList();
     }
 
+    /// <summary>
+    /// `csv` consisting of integers.
+    /// </summary>
     Dictionary<int, int> ParseSkillTypeOrder(string csv)
     {
         var parts = csv.Split(',');
@@ -114,6 +117,23 @@ public class Plugin : BaseUnityPlugin
             if (int.TryParse(parts[i].Trim(), out int typeId))
             {
                 dict[typeId] = i;
+            }
+        }
+        return dict;
+    }
+
+    /// <summary>
+    /// `csv` consisting of enum variant names.
+    /// </summary>
+    Dictionary<int, int> ParseSkillTypeOrder<T>(string csv) where T : struct, Enum
+    {
+        var parts = csv.Split(',');
+        var dict = new Dictionary<int, int>();
+        for (int i = 0; i < parts.Length; i++)
+        {
+            if (Enum.TryParse<T>(parts[i].Trim(), ignoreCase: true, out var result))
+            {
+                dict[Convert.ToInt32(result)] = i;
             }
         }
         return dict;
