@@ -22,6 +22,8 @@ public class Plugin : BaseUnityPlugin
 
     public static new ManualLogSource Logger;
 
+    static Harmony harmony;
+
     static Dictionary<int, int> ActiveSkillTypeOrder;
     static Dictionary<int, int> PassiveSkillTypeOrder;
 
@@ -69,9 +71,15 @@ public class Plugin : BaseUnityPlugin
         ActiveSkillTypeOrder = ParseSkillTypeOrder(activeOrderConfig.Value);
         PassiveSkillTypeOrder = ParseSkillTypeOrder(passiveOrderConfig.Value);
 
-        Harmony.CreateAndPatchAll(typeof(Plugin), PLUGIN_GUID);
+        harmony = Harmony.CreateAndPatchAll(typeof(Plugin), PLUGIN_GUID);
         Logger.LogInfo("Plugin loaded with Active skill order: " + activeOrderConfig.Value);
         Logger.LogInfo("Plugin loaded with Passive skill order: " + passiveOrderConfig.Value);
+    }
+
+    void OnDestroy()
+    {
+        harmony?.UnpatchSelf();
+        harmony = null;
     }
 
     [HarmonyPostfix]
