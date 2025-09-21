@@ -13,13 +13,17 @@ namespace AutoSortSkills;
 
 // SkillStaticDatebase
 
-[BepInPlugin("EtherealCat.AutoSortSkills", "AutoSortSkills", "1.0")]
-public class AutoSortSkillsPlugin : BaseUnityPlugin
+[BepInPlugin(PLUGIN_GUID, PLUGIN_NAME, PLUGIN_VERSION)]
+public class Plugin : BaseUnityPlugin
 {
+    public const string PLUGIN_GUID = "EtherealCat.AutoSortSkills";
+    public const string PLUGIN_NAME = "Auto Sort Skills";
+    public const string PLUGIN_VERSION = "1.0";
+
     public static new ManualLogSource Logger;
 
-    private static Dictionary<int, int> ActiveSkillTypeOrder;
-    private static Dictionary<int, int> PassiveSkillTypeOrder;
+    static Dictionary<int, int> ActiveSkillTypeOrder;
+    static Dictionary<int, int> PassiveSkillTypeOrder;
 
     enum PassiveSkillType
     {
@@ -49,7 +53,7 @@ public class AutoSortSkillsPlugin : BaseUnityPlugin
         SecretArt = 9, // >=9
     }
 
-    private void Start()
+    void Start()
     {
         Logger = base.Logger;
 
@@ -65,14 +69,14 @@ public class AutoSortSkillsPlugin : BaseUnityPlugin
         ActiveSkillTypeOrder = ParseSkillTypeOrder(activeOrderConfig.Value);
         PassiveSkillTypeOrder = ParseSkillTypeOrder(passiveOrderConfig.Value);
 
-        Harmony.CreateAndPatchAll(typeof(AutoSortSkillsPlugin), null);
+        Harmony.CreateAndPatchAll(typeof(Plugin), PLUGIN_GUID);
         Logger.LogInfo("Plugin loaded with Active skill order: " + activeOrderConfig.Value);
         Logger.LogInfo("Plugin loaded with Passive skill order: " + passiveOrderConfig.Value);
     }
 
     [HarmonyPostfix]
-    [HarmonyPatch(typeof(YSNewSaveSystem), "LoadSave")]
-    public static void LoadSave_Patch_Postfix(StartGame __instance)
+    [HarmonyPatch(typeof(YSNewSaveSystem), nameof(YSNewSaveSystem.LoadSave))]
+    static void LoadSave_Patch_Postfix(StartGame __instance)
     {
         Logger.LogInfo("YSNewSaveSystem::LoadSave()");
         SortPassiveSkillList();
@@ -80,20 +84,20 @@ public class AutoSortSkillsPlugin : BaseUnityPlugin
     }
 
     [HarmonyPostfix]
-    [HarmonyPatch(typeof(Avatar), "addHasStaticSkillList")]
-    public static void SortHasStaticSkillList_Patch_Postfix(Avatar __instance)
+    [HarmonyPatch(typeof(Avatar), nameof(Avatar.addHasStaticSkillList))]
+    static void SortHasStaticSkillList_Patch_Postfix(Avatar __instance)
     {
         SortPassiveSkillList();
     }
 
     [HarmonyPostfix]
-    [HarmonyPatch(typeof(Avatar), "addHasSkillList")]
-    public static void SortHasSkillList_Patch_Postfix(Avatar __instance)
+    [HarmonyPatch(typeof(Avatar), nameof(Avatar.addHasSkillList))]
+    static void SortHasSkillList_Patch_Postfix(Avatar __instance)
     {
         SortActiveSkillList();
     }
 
-    private Dictionary<int, int> ParseSkillTypeOrder(string csv)
+    Dictionary<int, int> ParseSkillTypeOrder(string csv)
     {
         var parts = csv.Split(',');
         var dict = new Dictionary<int, int>();
@@ -107,12 +111,12 @@ public class AutoSortSkillsPlugin : BaseUnityPlugin
         return dict;
     }
 
-    private static int GetSortOrder(int typeId, Dictionary<int, int> skillTypeOrder)
+    static int GetSortOrder(int typeId, Dictionary<int, int> skillTypeOrder)
     {
         return skillTypeOrder.TryGetValue(typeId, out int order) ? order : int.MaxValue;
     }
 
-    private static void SortPassiveSkillList()
+    static void SortPassiveSkillList()
     {
         var player = Tools.instance.getPlayer();
         if (player == null)
@@ -144,7 +148,7 @@ public class AutoSortSkillsPlugin : BaseUnityPlugin
         });
     }
 
-    private static void SortActiveSkillList()
+    static void SortActiveSkillList()
     {
         var player = Tools.instance.getPlayer();
         if (player == null)
@@ -181,7 +185,7 @@ public class AutoSortSkillsPlugin : BaseUnityPlugin
         });
     }
 
-    private static int ResolveActiveSkillType(_skillJsonData data, out bool isSecretArt)
+    static int ResolveActiveSkillType(_skillJsonData data, out bool isSecretArt)
     {
         isSecretArt = false;
 
@@ -205,7 +209,7 @@ public class AutoSortSkillsPlugin : BaseUnityPlugin
         return id;
     }
 
-    private static StaticSkillJsonData GetPassiveSkillData(int skillId)
+    static StaticSkillJsonData GetPassiveSkillData(int skillId)
     {
         foreach (StaticSkillJsonData data in StaticSkillJsonData.DataList)
         {
@@ -218,7 +222,7 @@ public class AutoSortSkillsPlugin : BaseUnityPlugin
         throw new Exception("Invalid skill id");
     }
 
-    private static _skillJsonData GetActiveSkillData(int skillId)
+    static _skillJsonData GetActiveSkillData(int skillId)
     {
         foreach (_skillJsonData data in _skillJsonData.DataList)
         {
@@ -264,38 +268,38 @@ public class AutoSortSkillsPlugin : BaseUnityPlugin
     //     }
     // }
 
-    public static void LogObjectFields(object obj)
-    {
-        var type = obj.GetType();
-        var fields = type.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        foreach (var field in fields)
-        {
-            try
-            {
-                var value = field.GetValue(obj);
-                Logger.LogInfo($"Field: {field.Name}, Value: {value}");
-            }
-            catch (Exception ex)
-            {
-                Logger.LogWarning($"Could not read field {field.Name}: {ex.Message}");
-            }
-        }
+    // public static void LogObjectFields(object obj)
+    // {
+    //     var type = obj.GetType();
+    //     var fields = type.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+    //     foreach (var field in fields)
+    //     {
+    //         try
+    //         {
+    //             var value = field.GetValue(obj);
+    //             Logger.LogInfo($"Field: {field.Name}, Value: {value}");
+    //         }
+    //         catch (Exception ex)
+    //         {
+    //             Logger.LogWarning($"Could not read field {field.Name}: {ex.Message}");
+    //         }
+    //     }
 
-        var props = type.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        foreach (var prop in props)
-        {
-            try
-            {
-                if (prop.CanRead)
-                {
-                    var value = prop.GetValue(obj);
-                    Logger.LogInfo($"Property: {prop.Name}, Value: {value}");
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.LogWarning($"Could not read property {prop.Name}: {ex.Message}");
-            }
-        }
-    }
+    //     var props = type.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+    //     foreach (var prop in props)
+    //     {
+    //         try
+    //         {
+    //             if (prop.CanRead)
+    //             {
+    //                 var value = prop.GetValue(obj);
+    //                 Logger.LogInfo($"Property: {prop.Name}, Value: {value}");
+    //             }
+    //         }
+    //         catch (Exception ex)
+    //         {
+    //             Logger.LogWarning($"Could not read property {prop.Name}: {ex.Message}");
+    //         }
+    //     }
+    // }
 }
