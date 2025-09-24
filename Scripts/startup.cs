@@ -145,4 +145,54 @@ public class g
 
         return 0;
     }
+
+    public static int SetNPCExp(float expFraction, int npcId = -1)
+    {
+        expFraction = Mathf.Clamp(expFraction, 0, 1);
+
+        var panel = UnityEngine.Resources.FindObjectsOfTypeAll<UINPCInfoPanel>().FirstOrDefault();
+
+        var isPanelOpen = panel?.gameObject.active == true;
+        if (isPanelOpen || npcId != -1)
+        {
+            // NPCXiuLian - Npc cultivation
+            // NpcJieSuanManager - Npc settlement manager
+            if (npcId != -1)
+            {
+                npcId = NPCEx.NPCIDToNew(npcId);
+            }
+            else {
+                npcId = NPCEx.NPCIDToNew(panel.npc.ID);
+            }
+
+            var data = npcId.NPCJson();
+            if (data == null)
+                return 2;
+            var name = jsonData.instance.AvatarRandomJsonData[npcId.ToString()]["Name"].Str;
+            var maxExp = jsonData.instance.LevelUpDataJsonData[data["Level"].I.ToString()]["MaxExp"].I;
+            // Or data["NextExp"].I
+            var newExp = (int)((float)maxExp * expFraction);
+
+            Log($"#{npcId} {name} Exp:{data["exp"].I}->{newExp}");
+            data.SetField("exp", newExp);
+            if (isPanelOpen)
+            {
+                panel.npc.Exp = newExp;
+            }
+
+            var lv = data["Level"].I;
+            if (expFraction == 1 && (lv == 3 || lv == 6 || lv == 9 || lv == 12))
+            {
+                NpcJieSuanManager.inst.npcStatus.SetNpcStatus(npcId, 2); // bottleneck
+            }
+            else if (data["Status"]["StatusId"].I == 2)
+            {
+                NpcJieSuanManager.inst.npcStatus.SetNpcStatus(npcId, 1); // normal
+            }
+
+            return 0;
+        }
+
+        return 1;
+    }
 }
