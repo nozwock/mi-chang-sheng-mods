@@ -2,6 +2,9 @@
 
 // JSONTemplates.TOJSON() for serialization
 
+using System;
+using System.Text.RegularExpressions;
+using System.Linq;
 using GUIPackage;
 using JSONClass;
 
@@ -47,31 +50,87 @@ public class g
         UnityExplorer.ExplorerCore.Log(message);
     }
 
+    static int _GetAcensionSkillRecordNumber(string luaScript)
+    {
+        // fn(true,*) <op> <number>
+        var lhsPattern = new Regex(@"[\p{IsCJKUnifiedIdeographs}\w]+\(true[^)]*\)\s*(>=|<=|==|>|<)\s*(\d+)");
+        // <number> <op> fn(true,*)
+        var rhsPattern = new Regex(@"(\d+)\s*(>=|<=|==|>|<)\s*[\p{IsCJKUnifiedIdeographs}\w]+\(true[^)]*\)");
+        // Fallback is any comparison with a number
+        var anyComparePattern = new Regex(@"(>=|<=|==|>|<)\s*(\d+)");
+
+        var numbers = lhsPattern.Matches(luaScript).Cast<Match>().Select(m => int.Parse(m.Groups[2].Value)).ToList();
+        numbers.AddRange(rhsPattern.Matches(luaScript).Cast<Match>().Select(m => int.Parse(m.Groups[1].Value)));
+
+        if (numbers.Count == 0)
+        {
+            numbers = anyComparePattern.Matches(luaScript).Cast<Match>().Select(m => int.Parse(m.Groups[2].Value)).ToList();
+        }
+
+        return numbers.Count != 0 ? numbers.Max() : -1;
+    }
+
+    static void _SetAcensionSkillGlobalStaticValue(string id, int recordValue)
+    {
+        // TianJieMiShuLingWuFightEventProcessor.OnSucessSetStaticValue
+        var data = jsonData.instance.TianJieMiShuData.list.Find(it => it["id"].Str == id);
+        if (data == null)
+            return;
+
+        var n = data["DiYiXiang"].n;
+        var n2 = data["GongBi"].n;
+        var n3 = data["XiuZhengZhi"].n;
+        var num = (float)recordValue * n3;
+        var num2 = n * (1f - Mathf.Pow(n2, num)) / (1f - n2);
+        var num3 = Mathf.RoundToInt(num2);
+        var staticId = data["StaticValueID"].I;
+        var num4 = GlobalValue.Get(staticId);
+        if (num3 > num4)
+        {
+            GlobalValue.Set(staticId, num3);
+        }
+    }
+
     public static void UnlockAllAcensionSkills()
     {
+        // TianJieMiShuLingWuFightEventProcessor.OnUpdateRound
         var player = g.player;
         if (player == null || player.level < 13) // Early Deity Transformation
         {
             return;
         }
-        foreach (var item in JSONClass.TianJieMiShuData.DataDict)
+        foreach (var it in JSONClass.TianJieMiShuData.DataDict)
         {
-            if (item.Value.Type == 0) // i.e. needs to be comprehended
+            var item = it.Value;
+            if (item.Type == 0) // i.e. needs to be comprehended
             {
-                var id = item.Value.id;
-                var found = false;
-                foreach (var item2 in player.TianJieCanLingWuSkills.list)
-                {
-                    if (item2.Str == id)
-                    {
-                        found = true;
-                        break;
-                    }
-                }
+                var id = item.id;
+
+                var found = player.TianJieCanLingWuSkills.list.Find(it2 => it2.Str == id) != null;
                 if (!found)
                 {
-                    Log($"Adding {id}");
                     player.TianJieCanLingWuSkills.Add(id);
+                }
+
+                var recordValue = _GetAcensionSkillRecordNumber(item.PanDing ?? "");
+                if (recordValue == -1)
+                {
+                    var data = jsonData.instance.TianJieMiShuData.list.Find(it2 => it2["id"].Str == id);
+                    if (data != null)
+                    {
+                        // Solving for a record which results in the same XiuZhengZhi
+                        recordValue = Mathf.RoundToInt(1f / data["XiuZhengZhi"].n);
+                    }
+                }
+                var isRecorded = player.TianJieSkillRecordValue.HasField(id);
+                if (!isRecorded || (isRecorded && player.TianJieSkillRecordValue[id].I < recordValue))
+                {
+                    player.TianJieSkillRecordValue.SetField(id, recordValue);
+                }
+
+                if (item.StaticValueID != 0)
+                {
+                    _SetAcensionSkillGlobalStaticValue(id, player.TianJieSkillRecordValue[id].I);
                 }
             }
         }
