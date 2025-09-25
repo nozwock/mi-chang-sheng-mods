@@ -3,7 +3,7 @@
   <Import Project="Local.props" Condition="Exists('Local.props')" />
 
   <PropertyGroup>
-    <TargetFramework>net46</TargetFramework>
+    <TargetFramework>net472</TargetFramework>
     <LangVersion>latest</LangVersion>
     <RestoreAdditionalProjectSources>
         https://api.nuget.org/v3/index.json;

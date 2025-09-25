@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
@@ -9,6 +10,7 @@ using KBEngine;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
+using JSONClass;
 
 namespace ShowIds;
 
@@ -21,10 +23,16 @@ public class Plugin : BaseUnityPlugin
 
 	static Harmony harmony;
 
+	// (type, skillId)
+	// type is also needed because skillId isn't unique between passive and active skills
+	static Dictionary<(int, int), int> skillIdToBookId = new();
+
 	void Start()
 	{
 		harmony = new Harmony(PLUGIN_GUID);
 		harmony.PatchAll();
+
+		MessageMag.Instance.Register(MessageName.MSG_GameInitFinish, new Action<MessageData>(OnGameInit));
 	}
 
 	void OnDestroy()
@@ -33,32 +41,54 @@ public class Plugin : BaseUnityPlugin
 		harmony = null;
 	}
 
+	void OnGameInit(MessageData msg = null)
+	{
+		foreach (var it in _ItemJsonData.DataDict)
+		{
+			var item = it.Value;
+			if (item.type == 3 || item.type == 4) // Skill/Cultivation
+			{
+				var skillId = Mathf.RoundToInt(float.Parse(item.desc));
+				skillIdToBookId[(item.type, skillId)] = item.id % jsonData.QingJiaoItemIDSegment;
+			}
+		}
+	}
+
+	static IEnumerable<MethodBase> GetMethodsWithOverrides(Type type, string method)
+	{
+		static string MethodId(MethodInfo m)
+		{
+			return $"{m.Module.ScopeName}.{m.MetadataToken}";
+		}
+
+		var seen = new HashSet<string>();
+		var m = AccessTools.Method(type, method);
+		if (m != null && !m.IsAbstract && seen.Add(MethodId(m)))
+		{
+			yield return m;
+		}
+
+		foreach (var subtype in type.Assembly.GetTypes())
+		{
+			if (subtype.IsSubclassOf(type))
+			{
+				m = AccessTools.Method(subtype, method);
+				if (m != null && !m.IsAbstract && seen.Add(MethodId(m)))
+					yield return m;
+			}
+		}
+	}
+
+	[HarmonyDebug]
 	[HarmonyPatch]
 	class Patch_BaseItem
 	{
 		// Patch BaseItem.GetDesc1 and all overrides in subclasses
 		static IEnumerable<MethodBase> TargetMethods()
 		{
-			static string MethodId(MethodInfo m)
+			foreach (var item in GetMethodsWithOverrides(typeof(Bag.BaseItem), nameof(Bag.BaseItem.GetDesc1)))
 			{
-				return $"{m.Module.ScopeName}.{m.MetadataToken}";
-			}
-
-			var seen = new HashSet<string>();
-			var baseMethod = AccessTools.Method(typeof(Bag.BaseItem), nameof(Bag.BaseItem.GetDesc1));
-			if (baseMethod != null && seen.Add(MethodId(baseMethod)))
-			{
-				yield return baseMethod;
-			}
-
-			foreach (var type in typeof(Bag.BaseItem).Assembly.GetTypes())
-			{
-				if (type.IsSubclassOf(typeof(Bag.BaseItem)))
-				{
-					var m = AccessTools.Method(type, nameof(Bag.BaseItem.GetDesc1));
-					if (m != null && seen.Add(MethodId(m)))
-						yield return m;
-				}
+				yield return item;
 			}
 		}
 
@@ -66,6 +96,32 @@ public class Plugin : BaseUnityPlugin
 		static void GetDesc1_Postfix(Bag.BaseItem __instance, ref string __result)
 		{
 			var idText = $"Item ID: {__instance.Id}";
+			if (!__result.StartsWith(idText))
+				__result = $"{idText}\n{__result}";
+		}
+	}
+
+	[HarmonyDebug]
+	[HarmonyPatch]
+	class Patch_BaseSkill
+	{
+		static IEnumerable<MethodBase> TargetMethods()
+		{
+			foreach (var item in GetMethodsWithOverrides(typeof(Bag.BaseSkill), nameof(Bag.BaseSkill.GetDesc1)))
+			{
+				yield return item;
+			}
+		}
+
+		[HarmonyPostfix]
+		static void GetDesc1_Postfix(Bag.BaseSkill __instance, ref string __result)
+		{
+			var type = __instance.CanPutSlotType == CanSlotType.功法 ? 4 : 3; // 4-Cultivation, 3-Skill
+			var idText = $"Skill ID: {__instance.SkillId}";
+			if (skillIdToBookId.TryGetValue((type, __instance.SkillId), out var bookId))
+			{
+				idText += $" Item ID: {bookId}";
+			}
 			if (!__result.StartsWith(idText))
 				__result = $"{idText}\n{__result}";
 		}
