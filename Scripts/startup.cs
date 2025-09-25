@@ -2,6 +2,9 @@
 
 // JSONTemplates.TOJSON() for serialization
 
+using GUIPackage;
+using JSONClass;
+
 public class g
 {
     public enum ItemType
@@ -89,6 +92,39 @@ public class g
     static ItemGroup GetItemGroup(int type)
     {
         return (ItemGroup)Bag.BaseItem.GetItemType(type);
+    }
+
+    public static int AddSkillBook(int skillId, bool isSkill = true, int count = 1)
+    {
+        // BagTianJieSkill.RefreshInventory
+        if ((isSkill ? !SkillDatebase.instence.Dict.ContainsKey(skillId) : !SkillStaticDatebase.instence.Dict.ContainsKey(skillId)) || count <= 0)
+        {
+            return 1;
+        }
+
+        int bookId = -1;
+        foreach (var it in _ItemJsonData.DataDict)
+        {
+            var item = it.Value;
+            if ((ItemType)item.type == (isSkill ? ItemType.SkillBook : ItemType.CultivationBook))
+            {
+                var _skillId = Mathf.RoundToInt(float.Parse(item.desc));
+                if (_skillId == skillId)
+                {
+                    bookId = item.id;
+                    break;
+                }
+            }
+        }
+
+        if (bookId == -1)
+        {
+            return 2;
+        }
+
+        g.player.addItem(bookId, null, count);
+
+        return 0;
     }
 
     public static int DuplicateItem(int id, uint count = 1)
