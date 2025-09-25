@@ -91,6 +91,25 @@ public class g
         return (ItemGroup)Bag.BaseItem.GetItemType(type);
     }
 
+    public static int DuplicateItem(int id, uint count = 1)
+    {
+        if (count <= 0)
+            return 1;
+
+        var player = g.player;
+        var items = player.itemList.values;
+        foreach (var item in items)
+        {
+            if (item.itemId == id)
+            {
+                player.addItem(item.itemId, item.Seid, (int)count);
+                return 0;
+            }
+        }
+
+        return 2;
+    }
+
     public static int AddItemGroup(
         ItemGroup group,
         int count,
